@@ -7,7 +7,7 @@ import google.oauth2.credentials
 from googleapiclient.discovery import build
 
 # Environment Variables (Secrets from GitHub)
-BLOG_ID = os.environ.get("BLOGGER_BLOG_ID")
+BLOG_ID = "8444463613201429945"
 CLIENT_ID = os.environ.get("BLOGGER_CLIENT_ID")
 CLIENT_SECRET = os.environ.get("BLOGGER_CLIENT_SECRET")
 REFRESH_TOKEN = os.environ.get("BLOGGER_REFRESH_TOKEN")
