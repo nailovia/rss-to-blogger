@@ -59,59 +59,28 @@ def save_posted_url(url):
 WORKING_MODEL = None
 
 def get_gemini_response(prompt):
-    global WORKING_MODEL
-    
     for key in GEMINI_API_KEYS:
-        # Dummy placeholders ko skip karega
         if key.startswith("Key") or "YOUR_" in key:
             continue
-
-        # 1. Agar model ka naam abhi nahi pata, to Google se active model dhoondhega
-        if not WORKING_MODEL:
-            try:
-                models_url = f"https://generativelanguage.googleapis.com/v1beta/models?key={key}"
-                res = requests.get(models_url, timeout=10)
-                if res.status_code == 200:
-                    available = res.json().get('models', [])
-                    for m in available:
-                        m_name = m.get('name', '').replace('models/', '')
-                        methods = m.get('supportedGenerationMethods', [])
-                        if 'generateContent' in methods and 'flash' in m_name:
-                            WORKING_MODEL = m_name
-                            print(f"🎯 Auto-detected working model: {WORKING_MODEL}")
-                            break
-            except Exception as e:
-                print(f"Model auto-detect error: {e}")
-
-        # Agar list se flash na mile to latest standard models par fallback karega
-        models_to_try = [WORKING_MODEL] if WORKING_MODEL else ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash-latest"]
-
-        for model_name in models_to_try:
-            if not model_name:
-                continue
-            try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}"
-                headers = {'Content-Type': 'application/json'}
-                data = {
-                    "contents": [{"parts": [{"text": prompt}]}]
-                }
-                
-                response = requests.post(url, headers=headers, json=data, timeout=30)
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    return result['candidates'][0]['content']['parts'][0]['text'].strip()
-                elif response.status_code == 404:
-                    print(f"⚠️ Model {model_name} 404, agla model check ho raha hai...")
-                    WORKING_MODEL = None
-                    continue
-                else:
-                    print(f"⚠️ Key error status {response.status_code}")
-                    break
-            except Exception as e:
-                print(f"⚠️ Network error with key: {e}")
-                break
-                
+        try:
+            # Stable aur tested endpoint with gemini-1.5-flash
+            url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={key}"
+            headers = {'Content-Type': 'application/json'}
+            data = {
+                "contents": [{"parts": [{"text": prompt}]}]
+            }
+            
+            response = requests.post(url, headers=headers, json=data, timeout=30)
+            
+            if response.status_code == 200:
+                result = response.json()
+                return result['candidates'][0]['content']['parts'][0]['text'].strip()
+            else:
+                print(f"⚠️ Key failed (Status {response.status_code}: {response.text}). Trying next...")
+                time.sleep(2)
+        except Exception as e:
+            print(f"⚠️ Network error with key: {e}")
+            time.sleep(2)
     return None
 
 def process_content_with_ai(urdu_title, original_content):
