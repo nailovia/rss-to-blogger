@@ -36,7 +36,9 @@ FEEDS = {
 }
 
 POSTED_URLS_FILE = "posted_urls.txt"
-
+POSTED_URLS_FILE = "posted_urls.txt"
+POSTED_TITLES_FILE = "posted_titles.txt"   # NEW
+POSTED_IMAGES_FILE = "posted_images.txt"   # NEW
 # Blogger API Credentials (Apne Client ID aur Tokens yahan wapas paste karein)
 CLIENT_ID = "406814434519-vj8a3i4b1e38n6b239pi2lf9o6tfhh37.apps.googleusercontent.com"
 CLIENT_SECRET = "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"
@@ -46,15 +48,41 @@ BLOG_ID = "3423631024307035197"
 # HELPER FUNCTIONS
 # ==========================================
 
-def load_posted_urls():
-    if os.path.exists(POSTED_URLS_FILE):
-        with open(POSTED_URLS_FILE, "r") as f:
-            return set(f.read().splitlines())
+def load_set_from_file(filename):
+    """Generic function - kisi bhi file se set load karein"""
+    if os.path.exists(filename):
+        with open(filename, "r", encoding="utf-8") as f:
+            return set(line.strip() for line in f if line.strip())
     return set()
 
+def save_to_file(filename, value):
+    """Generic function - kisi bhi file mein ek line append karein"""
+    with open(filename, "a", encoding="utf-8") as f:
+        f.write(value + "\n")
+
+def load_posted_urls():
+    return load_set_from_file(POSTED_URLS_FILE)
+
+def load_posted_titles():
+    return load_set_from_file(POSTED_TITLES_FILE)
+
+def load_posted_images():
+    return load_set_from_file(POSTED_IMAGES_FILE)
+
 def save_posted_url(url):
-    with open(POSTED_URLS_FILE, "a") as f:
-        f.write(url + "\n")
+    save_to_file(POSTED_URLS_FILE, url)
+
+def save_posted_title(title):
+    save_to_file(POSTED_TITLES_FILE, title)
+
+def save_posted_image(image_url):
+    save_to_file(POSTED_IMAGES_FILE, image_url)
+
+def normalize_title(title):
+    """Title ko normalize karein - extra spaces, punctuation hata kar lowercase"""
+    title = re.sub(r'[^\w\s\u0600-\u06FF]', '', title)  # Sirf Urdu/Arabic letters, numbers, spaces rakhein
+    title = re.sub(r'\s+', ' ', title).strip().lower()
+    return title
 
 WORKING_MODEL = None
 
@@ -117,8 +145,10 @@ def post_to_blogger(title, content, labels_list):
         posts = service.posts()
         res = posts.insert(blogId=BLOG_ID, body=body, isDraft=False).execute()
         print(f"✅ Post Published Successfully! Link: {res.get('url')}")
+        return True     # ✅ Success
     except Exception as e:
         print(f"❌ Blogger Post Error: {e}")
+        return False    # ❌ Fail
 
 # ==========================================
 # MAIN EXECUTION
@@ -127,9 +157,10 @@ def post_to_blogger(title, content, labels_list):
 def fetch_and_post_news():
     print("🚀 Auto Blogger Script Started!")
     posted_urls = load_posted_urls()
-    print(f"📂 Pehle se post shuda URLs ki tadad: {len(posted_urls)}")
+    posted_titles = load_posted_titles()
+    posted_images = load_posted_images()
+    print(f"📂 Pehle se post shuda URLs: {len(posted_urls)} | Titles: {len(posted_titles)} | Images: {len(posted_images)}")
 
-    # GitHub Actions ko block hone se bachanay ke liye Chrome header
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/114.0.0.0 Safari/537.36'}
 
     for category_label, feed_url in FEEDS.items():
@@ -146,16 +177,23 @@ def fetch_and_post_news():
         
         for entry in parsed_feed.entries:
             news_link = entry.link
+            news_title = entry.title
             
+            # ✅ CHECK 1: URL repeat
             if news_link in posted_urls:
-                print(f"⏩ Skipping (Already Posted): {entry.title}")
+                print(f"⏩ Skipping (URL Already Posted): {news_title}")
+                continue
+            
+            # ✅ CHECK 2: Title repeat (normalized)
+            normalized_title = normalize_title(news_title)
+            if normalized_title in posted_titles:
+                print(f"⏩ Skipping (Same Title Already Posted): {news_title}")
                 continue
             
             raw_content = entry.content[0].value if 'content' in entry else entry.summary
             soup = BeautifulSoup(raw_content, 'html.parser')
             img_tag = soup.find('img')
             
-            # Agar feed mein image na mile to original website se uthaye
             if not img_tag:
                 try:
                     article_req = requests.get(news_link, headers=headers, timeout=10)
@@ -168,13 +206,19 @@ def fetch_and_post_news():
                     pass
 
             if not img_tag:
-                print(f"🚫 Skipping (No Image Found anywhere): {entry.title}")
+                print(f"🚫 Skipping (No Image Found anywhere): {news_title}")
+                continue
+            
+            # ✅ CHECK 3: Image repeat
+            img_src = img_tag.get('src', '')
+            if img_src and img_src in posted_images:
+                print(f"⏩ Skipping (Same Thumbnail Already Posted): {news_title}")
                 continue
             
             clean_text = soup.get_text(separator="\n").strip()
             
-            print(f"✍️ Processing with AI: {entry.title}")
-            slug, rewritten_urdu = process_content_with_ai(entry.title, clean_text)
+            print(f"✍️ Processing with AI: {news_title}")
+            slug, rewritten_urdu = process_content_with_ai(news_title, clean_text)
             
             if not rewritten_urdu:
                 print("❌ Skipping: AI failed to rewrite content.")
@@ -184,13 +228,21 @@ def fetch_and_post_news():
             final_html_content = f"{image_html}<br><br><p>{rewritten_urdu}</p><br><br><p><em>News Source: Express News</em></p>"
             
             print(f"🌐 Ready to Post -> Label: {category_label} | Slug: {slug}")
-            post_to_blogger(entry.title, final_html_content, [category_label])
+            success = post_to_blogger(news_title, final_html_content, [category_label])
             
-            save_posted_url(news_link)
+            # ✅ Sirf tab save karein jab post successfully publish ho
+            if success:
+                save_posted_url(news_link)
+                save_posted_title(normalized_title)
+                if img_src:
+                    save_posted_image(img_src)
+                print("💾 Data saved (URL, Title, Image)")
+            else:
+                print("⚠️ Post fail hua - kuch bhi save nahi kiya")
+            
             print("-" * 50)
-            
-            # Ek category se sirf 1 post karega taake Blogger spam mein na daale
             break
+
 
 if __name__ == "__main__":
     fetch_and_post_news()
