@@ -97,60 +97,58 @@ def fetch_and_post_news():
     posted_urls = load_posted_urls()
     print(f"📂 Pehle se post shuda URLs ki tadad: {len(posted_urls)}")
 
-    # Website ko dhoka dene ke liye Chrome browser ka User-Agent
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
-    }
-
     for feed_url in FEEDS:
         print(f"\n🔍 Checking feed: {feed_url}")
         category_label = feed_url.split('.com/')[1].split('/feed')[0].lower()
         
         try:
-            # Pehle feed ka data browser ban kar download karo
-            feed_response = requests.get(feed_url, headers=headers, timeout=15)
-            parsed_feed = feedparser.parse(feed_response.content)
+            # GitHub IP Block se bachne ke liye Free RSS Proxy ka istemal
+            api_url = f"https://api.rss2json.com/v1/api.json?rss_url={feed_url}"
+            res = requests.get(api_url, timeout=15)
+            data = res.json()
+            articles = data.get("items", [])
         except Exception as e:
-            print(f"⚠️ Feed block ho gayi ya network error: {e}")
+            print(f"⚠️ Feed error: {e}")
             continue
 
-        print(f"✅ Found {len(parsed_feed.entries)} articles in this feed.")
+        print(f"✅ Found {len(articles)} articles in this feed.")
         
-        for entry in parsed_feed.entries:
-            news_link = entry.link
+        for entry in articles:
+            news_link = entry.get("link", "")
+            title = entry.get("title", "")
             
             if news_link in posted_urls:
-                print(f"⏩ Skipping (Already Posted): {entry.title}")
+                print(f"⏩ Skipping (Already Posted): {title}")
                 continue
             
-            raw_content = entry.content[0].value if 'content' in entry else entry.summary
+            raw_content = entry.get("content", "")
+            if not raw_content:
+                raw_content = entry.get("description", "")
+                
             soup = BeautifulSoup(raw_content, 'html.parser')
-            
-            # Pehle feed mein image check karega
             img_tag = soup.find('img')
             
-            # Agar feed mein image nahi mili, to website ke link se image uthayega
+            # Agar feed mein image na mile to original website se uthaye
             if not img_tag:
                 try:
+                    headers = {'User-Agent': 'Mozilla/5.0'}
                     article_req = requests.get(news_link, headers=headers, timeout=10)
                     article_soup = BeautifulSoup(article_req.text, 'html.parser')
                     meta_img = article_soup.find('meta', property='og:image')
-                    
                     if meta_img and meta_img.get('content'):
                         img_url = meta_img['content']
                         img_tag = BeautifulSoup(f"<img src='{img_url}' alt='Daily Ausaf News' />", 'html.parser').img
-                except Exception as e:
-                    print(f"Error extracting image from website: {e}")
+                except:
+                    pass
 
-            # Agar website se bhi image na mili, phir skip kar dega
             if not img_tag:
-                print(f"🚫 Skipping (No Image Found anywhere): {entry.title}")
+                print(f"🚫 Skipping (No Image Found anywhere): {title}")
                 continue
             
             clean_text = soup.get_text(separator="\n").strip()
             
-            print(f"✍️ Processing with AI: {entry.title}")
-            slug, rewritten_urdu = process_content_with_ai(entry.title, clean_text)
+            print(f"✍️ Processing with AI: {title}")
+            slug, rewritten_urdu = process_content_with_ai(title, clean_text)
             
             if not rewritten_urdu:
                 print("❌ Skipping: AI failed to rewrite content.")
@@ -160,7 +158,7 @@ def fetch_and_post_news():
             final_html_content = f"{image_html}<br><br><p>{rewritten_urdu}</p><br><br><p><em>Image Credit: Daily Ausaf</em></p>"
             
             print(f"🌐 Ready to Post -> Label: {category_label} | Slug: {slug}")
-            post_to_blogger(entry.title, final_html_content, [category_label])
+            post_to_blogger(title, final_html_content, [category_label])
             
             save_posted_url(news_link)
             print("-" * 50)
