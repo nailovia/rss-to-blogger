@@ -64,7 +64,7 @@ def get_gemini_response(prompt):
             continue
         try:
             # Stable aur tested endpoint with gemini-1.5-flash
-            url = f"url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}""
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}"
             headers = {'Content-Type': 'application/json'}
             data = {
                 "contents": [{"parts": [{"text": prompt}]}]
