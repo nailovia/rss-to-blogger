@@ -38,8 +38,8 @@ FEEDS = [
 POSTED_URLS_FILE = "posted_urls.txt"
 
 # Blogger API Credentials (Yahan apne credentials daalein)
-CLIENT_ID = "YOUR_CLIENT_ID.apps.googleusercontent.com"
-CLIENT_SECRET = "YOUR_CLIENT_SECRET"
+CLIENT_ID = "406814434519-iu2hqpqgl54id0e8rbf4a8ikprvmoi94.apps.googleusercontent.com"
+CLIENT_SECRET = "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"
 BLOG_ID = "3423631024307035197"
 
 # ==========================================
