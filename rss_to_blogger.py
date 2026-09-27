@@ -59,13 +59,22 @@ def save_posted_url(url):
 def get_gemini_response(prompt):
     for key in GEMINI_API_KEYS:
         try:
-            genai.configure(api_key=key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            response = model.generate_content(prompt)
-            if response.text:
-                return response.text.strip()
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}"
+            headers = {'Content-Type': 'application/json'}
+            data = {
+                "contents": [{"parts": [{"text": prompt}]}]
+            }
+            
+            response = requests.post(url, headers=headers, json=data, timeout=30)
+            
+            if response.status_code == 200:
+                result = response.json()
+                return result['candidates'][0]['content']['parts'][0]['text'].strip()
+            else:
+                print(f"⚠️ Key failed (Status {response.status_code}). Trying next...")
+                time.sleep(2)
         except Exception as e:
-            print(f"⚠️ Key failed, trying next... Error: {e}")
+            print(f"⚠️ Network error with key: {e}")
             time.sleep(2)
     return None
 
