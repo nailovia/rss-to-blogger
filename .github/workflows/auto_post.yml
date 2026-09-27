@@ -8,6 +8,8 @@ on:
 jobs:
   run-bot:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write    # ← Ye nayi line add ki (push karne ke liye zaroori)
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
@@ -24,3 +26,12 @@ jobs:
 
     - name: Run Auto Blogger Script
       run: python rss_to_blogger.py
+
+    # ⬇️⬇️⬇️ YEH NAYA STEP ADD HUA HAI ⬇️⬇️⬇️
+    - name: Commit posted files
+      run: |
+        git config --global user.name "github-actions"
+        git config --global user.email "actions@github.com"
+        git add posted_urls.txt posted_titles.txt posted_images.txt
+        git commit -m "Update posted URLs, Titles, Images" || exit 0
+        git push
