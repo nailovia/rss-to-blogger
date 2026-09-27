@@ -38,8 +38,9 @@ FEEDS = [
 POSTED_URLS_FILE = "posted_urls.txt"
 
 # Blogger API Credentials (Yahan apne credentials daalein)
-CLIENT_ID = "406814434519-iu2hqpqgl54id0e8rbf4a8ikprvmoi94.apps.googleusercontent.com"
-CLIENT_SECRET = "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"
+CLIENT_ID = "406814434519-vj8a3i4b1e38n6b239pi2lf9o6tfhh37.apps.googleusercontent.com"
+CLIENT_SECRET = "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"
+REFRESH_TOKEN = "1//04-7k2XcVtLUYCgYIARAAGAQSNwF-L9Ird9g7RNp9rc534rQtF0P61DpiqU6MyHqdmTnJcoi_ObYp7eDgB8TXiEbNr8AQYCdxof4" 
 BLOG_ID = "3423631024307035197"
 
 # ==========================================
