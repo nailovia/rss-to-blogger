@@ -97,11 +97,23 @@ def fetch_and_post_news():
     posted_urls = load_posted_urls()
     print(f"📂 Pehle se post shuda URLs ki tadad: {len(posted_urls)}")
 
+    # Website ko dhoka dene ke liye Chrome browser ka User-Agent
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
+    }
+
     for feed_url in FEEDS:
         print(f"\n🔍 Checking feed: {feed_url}")
         category_label = feed_url.split('.com/')[1].split('/feed')[0].lower()
         
-        parsed_feed = feedparser.parse(feed_url)
+        try:
+            # Pehle feed ka data browser ban kar download karo
+            feed_response = requests.get(feed_url, headers=headers, timeout=15)
+            parsed_feed = feedparser.parse(feed_response.content)
+        except Exception as e:
+            print(f"⚠️ Feed block ho gayi ya network error: {e}")
+            continue
+
         print(f"✅ Found {len(parsed_feed.entries)} articles in this feed.")
         
         for entry in parsed_feed.entries:
@@ -120,7 +132,6 @@ def fetch_and_post_news():
             # Agar feed mein image nahi mili, to website ke link se image uthayega
             if not img_tag:
                 try:
-                    headers = {'User-Agent': 'Mozilla/5.0'}
                     article_req = requests.get(news_link, headers=headers, timeout=10)
                     article_soup = BeautifulSoup(article_req.text, 'html.parser')
                     meta_img = article_soup.find('meta', property='og:image')
@@ -131,7 +142,7 @@ def fetch_and_post_news():
                 except Exception as e:
                     print(f"Error extracting image from website: {e}")
 
-            # Agar website se bhi image na mili, phir pakka skip kar dega
+            # Agar website se bhi image na mili, phir skip kar dega
             if not img_tag:
                 print(f"🚫 Skipping (No Image Found anywhere): {entry.title}")
                 continue
