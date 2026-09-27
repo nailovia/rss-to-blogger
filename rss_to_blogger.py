@@ -2,6 +2,7 @@ import feedparser
 import os
 import re
 import time
+import requests
 from bs4 import BeautifulSoup
 import google.generativeai as genai
 
@@ -89,57 +90,70 @@ def process_content_with_ai(urdu_title, original_content):
 # ==========================================
 # MAIN EXECUTION
 # ==========================================
+import requests
 
 def fetch_and_post_news():
+    print("🚀 Auto Blogger Script Started!")
     posted_urls = load_posted_urls()
+    print(f"📂 Pehle se post shuda URLs ki tadad: {len(posted_urls)}")
 
     for feed_url in FEEDS:
-        # Category Label URL se nikalna (e.g., "science-health")
+        print(f"\n🔍 Checking feed: {feed_url}")
         category_label = feed_url.split('.com/')[1].split('/feed')[0].lower()
         
         parsed_feed = feedparser.parse(feed_url)
+        print(f"✅ Found {len(parsed_feed.entries)} articles in this feed.")
         
         for entry in parsed_feed.entries:
             news_link = entry.link
             
             if news_link in posted_urls:
+                print(f"⏩ Skipping (Already Posted): {entry.title}")
                 continue
             
             raw_content = entry.content[0].value if 'content' in entry else entry.summary
             soup = BeautifulSoup(raw_content, 'html.parser')
             
-            # Agar image nahi hai to post skip karein
+            # Pehle feed mein image check karega
             img_tag = soup.find('img')
+            
+            # Agar feed mein image nahi mili, to website ke link se image uthayega
             if not img_tag:
-                print(f"Skipping (No Image): {entry.title}")
+                try:
+                    headers = {'User-Agent': 'Mozilla/5.0'}
+                    article_req = requests.get(news_link, headers=headers, timeout=10)
+                    article_soup = BeautifulSoup(article_req.text, 'html.parser')
+                    meta_img = article_soup.find('meta', property='og:image')
+                    
+                    if meta_img and meta_img.get('content'):
+                        img_url = meta_img['content']
+                        img_tag = BeautifulSoup(f"<img src='{img_url}' alt='Daily Ausaf News' />", 'html.parser').img
+                except Exception as e:
+                    print(f"Error extracting image from website: {e}")
+
+            # Agar website se bhi image na mili, phir pakka skip kar dega
+            if not img_tag:
+                print(f"🚫 Skipping (No Image Found anywhere): {entry.title}")
                 continue
             
             clean_text = soup.get_text(separator="\n").strip()
             
-            # Gemini API ko call karna
-            print(f"Processing: {entry.title}")
+            print(f"✍️ Processing with AI: {entry.title}")
             slug, rewritten_urdu = process_content_with_ai(entry.title, clean_text)
             
             if not rewritten_urdu:
-                print("Skipping: AI failed to rewrite content.")
+                print("❌ Skipping: AI failed to rewrite content.")
                 continue 
                 
-            # Final HTML banانا jisme image aur credit shamil hai
             image_html = str(img_tag)
             final_html_content = f"{image_html}<br><br><p>{rewritten_urdu}</p><br><br><p><em>Image Credit: Daily Ausaf</em></p>"
             
-            print(f"Ready to Post -> Label: {category_label} | Slug: {slug}")
+            print(f"🌐 Ready to Post -> Label: {category_label} | Slug: {slug}")
+            post_to_blogger(entry.title, final_html_content, [category_label])
             
-            # -----------------------------------------------------------
-            # Yahan apna Blogger API ka authenticate aur post karne wala 
-            # code add karein. `final_html_content`, `entry.title`, 
-            # aur `category_label` ko post body mein pass karein.
-            # -----------------------------------------------------------
-            
-            # Post complete hone ke baad URL save karein taake repeat na ho
             save_posted_url(news_link)
-            print("Successfully Posted & Saved URL.")
             print("-" * 50)
 
 if __name__ == "__main__":
     fetch_and_post_news()
+    print("🏁 Script Finished Successfully!")
