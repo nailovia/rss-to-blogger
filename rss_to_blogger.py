@@ -32,10 +32,10 @@ FEEDS = {
     "World": "https://www.express.pk/world/feed/",
     "Sports": "https://www.express.pk/sports/feed/",
     "Business": "https://www.express.pk/business/feed/",
-    "Science": "https://www.express.pk/science/feed/"
-    "Entertainment": "https://www.express.pk/feed/saqafat"
-     "Health": "https://www.express.pk/feed/health"
-"Jobs": "https://ntslogin.pk/feed/"
+    "Science": "https://www.express.pk/science/feed/",
+    "Entertainment": "https://www.express.pk/feed/saqafat",
+     "Health": "https://www.express.pk/feed/health",
+"Jobs": "https://ntslogin.pk/feed/",
 }
 
 POSTED_URLS_FILE = "posted_urls.txt"
