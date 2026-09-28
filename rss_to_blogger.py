@@ -18,12 +18,12 @@ GEMINI_API_KEYS = [
     "AQ.Ab8RN6KOn9OKY5PRb-B6n9klJ_CpoCQWhbmQZRGD3lVVgwx26w", 
     "AQ.Ab8RN6LXlpWMpvz8vegzY8pb3xpdFyuQX2HruwWx_XC3_7cBTg",
     "AQ.Ab8RN6KP2hoh_Rj4FjBonqFRdHn-3p6WO4G2__5cLf601NDtcg",
-    "Key5",
-    "Key6",
-    "Key7",
-    "Key8",
-    "Key9",
-    "Key10"
+    "AQ.Ab8RN6KWBEjkqJWrZ_HvC2sOU4mhCP4pzBw3VSOu4ICptv1kVw",
+    "AQ.Ab8RN6KWBEjkqJWrZ_HvC2sOU4mhCP4pzBw3VSOu4ICptv1kVw",
+    "AQ.Ab8RN6LR_8VXxuwj8NHoUqJNOwp63zLuGXBshWAkkc9mEKuuow",
+    "AQ.Ab8RN6I_eq23_pwzQEfxt3hvbAdtZwPZFMPLqrVSsnCUUtMLHg",
+    "AQ.Ab8RN6Iah04pShp5wYpU-ZS6jd28oEYRtQr3Gl4nRY3RXkYAUw",
+    "AQ.Ab8RN6LbEcWl4XTeAginoJWs6kyjbbA3A9bRPSyJlhHLhXJqlQ"
 ]
 GEMINI_MODELS = [
     "gemini-3.8-flash",
