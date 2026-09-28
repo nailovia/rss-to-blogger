@@ -90,28 +90,34 @@ def normalize_title(title):
 WORKING_MODEL = None
 
 def get_gemini_response(prompt):
-    for key in GEMINI_API_KEYS:
-        if key.startswith("Key") or "YOUR_" in key:
-            continue
-        try:
-            # Stable aur tested endpoint with gemini-1.5-flash
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={key}"
-            headers = {'Content-Type': 'application/json'}
-            data = {
-                "contents": [{"parts": [{"text": prompt}]}]
-            }
-            
-            response = requests.post(url, headers=headers, json=data, timeout=30)
-            
-            if response.status_code == 200:
-                result = response.json()
-                return result['candidates'][0]['content']['parts'][0]['text'].strip()
-            else:
-                print(f"⚠️ Key failed (Status {response.status_code}: {response.text}). Trying next...")
-                time.sleep(2)
-        except Exception as e:
-            print(f"⚠️ Network error with key: {e}")
-            time.sleep(2)
+    # Pehle models, phir keys
+    for model in GEMINI_MODELS:
+        print(f"🔄 Trying model: {model}")
+        for key in GEMINI_API_KEYS:
+            key = key.strip()
+            if not key or key.startswith("Key"):
+                continue
+            try:
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+                headers = {'Content-Type': 'application/json'}
+                data = {"contents": [{"parts": [{"text": prompt}]}]}
+                
+                response = requests.post(url, headers=headers, json=data, timeout=30)
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    if 'candidates' in result and result['candidates']:
+                        print(f"✅ Success with {model} using key ending ...{key[-6:]}")
+                        return result['candidates'][0]['content']['parts'][0]['text'].strip()
+                elif response.status_code == 429:
+                    print(f"⚠️ Quota khatam: {model} key ...{key[-6:]}")
+                else:
+                    print(f"⚠️ {model} key ...{key[-6:]} failed: {response.status_code}")
+                time.sleep(1)
+            except Exception as e:
+                print(f"⚠️ Network error: {e}")
+                time.sleep(1)
+    print("❌ Saare models aur keys fail ho gaye.")
     return None
 
 def process_content_with_ai(urdu_title, original_content):
