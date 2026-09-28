@@ -17,7 +17,7 @@ GEMINI_API_KEYS = [
     "AQ.Ab8RN6JAcflDfIzmyvIJvxitac_5ryC5sCszEFP-sdQZHk0jhg", 
     "AQ.Ab8RN6KOn9OKY5PRb-B6n9klJ_CpoCQWhbmQZRGD3lVVgwx26w", 
     "AQ.Ab8RN6LXlpWMpvz8vegzY8pb3xpdFyuQX2HruwWx_XC3_7cBTg",
-    "Key4",
+    "AQ.Ab8RN6KP2hoh_Rj4FjBonqFRdHn-3p6WO4G2__5cLf601NDtcg",
     "Key5",
     "Key6",
     "Key7",
