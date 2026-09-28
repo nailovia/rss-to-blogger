@@ -27,9 +27,7 @@ GEMINI_API_KEYS = [
 ]
 GEMINI_MODELS = [
     "gemini-3.8-flash",
-    "gemini-2.5-flash",
     "gemini-flash-latest",
-    "gemini-2.0-flash-lite",
 ]
 # Nayi Feeds (Express News) aur unki Categories
 FEEDS = {
