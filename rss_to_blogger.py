@@ -124,16 +124,10 @@ def get_gemini_response(prompt):
     return None
 
 def process_content_with_ai(urdu_title, original_content):
-    # 1. English Slug Generate Karna
-    slug_prompt = f"Translate this Urdu title to English. Return ONLY the English translation without any extra words or quotes: {urdu_title}"
-    english_title = get_gemini_response(slug_prompt)
+    # Slug skip (Blogger khud bana lega)
+    slug = ""
     
-    if english_title:
-        slug = re.sub(r'[^a-zA-Z0-9\s-]', '', english_title).strip().replace(' ', '-').lower()
-    else:
-        slug = ""
-
-    # 2. Suspenseful aur To-The-Point Urdu mein Rewrite Karna
+    # Sirf content rewrite
     rewrite_prompt = f"Rewrite this news article in Urdu. Keep it to the point, engaging, and create suspense. Do not change the core real-time facts. Only provide the rewritten Urdu text without any markdown or extra text. Here is the news:\n\n{original_content}"
     urdu_rewritten_content = get_gemini_response(rewrite_prompt)
 
