@@ -40,7 +40,6 @@ YOUR_BLOG_URL = os.environ.get("BLOG_URL", "https://yourbolt.blogspot.com")
 # FEEDS (Alag naam, common label ke liye)
 # ==========================================
 FEEDS = {
-    # News
     "Pakistan": "https://www.express.pk/pakistan/feed/",
     "World": "https://www.express.pk/world/feed/",
     "Sports": "https://www.express.pk/sports/feed/",
@@ -48,13 +47,9 @@ FEEDS = {
     "Science": "https://www.express.pk/science/feed/",
     "Health": "https://www.express.pk/feed/health",
     "Jobs": "https://www.shaheenleaderacademy.com/feed/",
-
-    # Technology (3 feeds - sab ka label "Technology")
     "Tech-Express": "https://www.express.pk/feed/technology",
     "Tech-Juice": "https://www.techjuice.pk/feed/",
     "Tech-ProPakistani": "https://propakistani.pk/category/tech-and-telecom/feed/",
-
-    # Entertainment (4 feeds - sab ka label "Entertainment")
     "Ent-Express": "https://www.express.pk/feed/saqafat",
     "Ent-SuchTV": "https://www.suchtv.pk/urdu/entertainment/itemlist.html?format=feed",
     "Ent-DailyShowbiz": "https://dailyshowbiz.net/feed/",
@@ -115,6 +110,36 @@ def normalize_title(title):
     title = re.sub(r'[^\w\s\u0600-\u06FF]', '', title)
     title = re.sub(r'\s+', ' ', title).strip().lower()
     return title
+
+def fix_arabic_to_urdu(text):
+    """
+    Arabic characters ko Urdu characters mein convert karein.
+    AI kabhi kabhi Arabic script use kar jata hai.
+    """
+    if not text:
+        return text
+    
+    replacements = {
+        '\u064A': '\u06CC',  # ي → ی (Arabic yeh → Urdu yeh)
+        '\u0649': '\u06CC',  # ى → ی
+        '\u0626': '\u06CC',  # ئ → ی
+        '\u0643': '\u06A9',  # ك → ک (Arabic kaf → Urdu kaf)
+        '\u0647': '\u06C1',  # ه → ہ (Arabic heh → Urdu heh)
+        '\u06C0': '\u06C1',  # ۀ → ہ
+        '\u0623': '\u0627',  # أ → ا
+        '\u0625': '\u0627',  # إ → ا
+        '\u0671': '\u0627',  # ٱ → ا
+        '\u0624': '\u0648',  # ؤ → و
+        '\u0629': '\u06C1',  # ة → ہ
+    }
+    
+    for arabic, urdu in replacements.items():
+        text = text.replace(arabic, urdu)
+    
+    # "آ" (alif + maddah) ko "آ" (alif madda) banayein
+    text = text.replace('\u0627\u0653', '\u0622')
+    
+    return text
 
 # ==========================================
 # GEMINI FUNCTION
@@ -254,16 +279,21 @@ def get_ai_response(prompt):
 # ==========================================
 
 def process_content_with_ai(english_title, original_content):
-    combined_prompt = "You are a professional Urdu news editor.\n"
+    combined_prompt = "You are a professional Pakistani Urdu news editor for a Pakistani news website.\n"
     combined_prompt += "Your task is to:\n"
-    combined_prompt += "1. Translate the given English title into pure Urdu.\n"
-    combined_prompt += "2. Rewrite the given news article entirely in pure Urdu.\n\n"
+    combined_prompt += "1. Translate the given English title into Pakistani Urdu.\n"
+    combined_prompt += "2. Rewrite the given news article entirely in Pakistani Urdu.\n\n"
     combined_prompt += "CRITICAL RULES (MUST FOLLOW):\n"
-    combined_prompt += "1. Output MUST be 100% in Urdu script.\n"
-    combined_prompt += "2. STRICTLY USE ONLY URDU ALPHABET.\n"
-    combined_prompt += "3. DO NOT use any Bengali, Hindi, Arabic, or English characters in the text.\n"
-    combined_prompt += "4. Do not change the core real-time facts or numbers.\n"
-    combined_prompt += "5. Use EXACTLY the following format:\n"
+    combined_prompt += "1. Output MUST be 100% in Pakistani Urdu script.\n"
+    combined_prompt += "2. USE ONLY PAKISTANI URDU ALPHABET: ا آ ب پ ت ٹ ث ج چ ح خ د ڈ ذ ر ڑ ز ژ س ش ص ض ط ظ ع غ ف ق ک گ ل م ن ں و ہ ھ ء ی ے\n"
+    combined_prompt += "3. DO NOT use Arabic script characters like: ي ك ه ة ؤ ئ أ إ ٱ\n"
+    combined_prompt += "4. DO NOT use Bengali or Hindi characters.\n"
+    combined_prompt += "5. Write 'آ' (alif madda), NOT 'آ' (alif + maddah).\n"
+    combined_prompt += "6. Write 'ی' (Urdu yeh), NOT 'ي' (Arabic yeh).\n"
+    combined_prompt += "7. Write 'ک' (Urdu kaf), NOT 'ك' (Arabic kaf).\n"
+    combined_prompt += "8. Write 'ہ' (Urdu heh), NOT 'ه' (Arabic heh).\n"
+    combined_prompt += "9. Do not change the core real-time facts or numbers.\n"
+    combined_prompt += "10. Use EXACTLY the following format:\n"
     combined_prompt += "TITLE: [Urdu Title Here]\n"
     combined_prompt += "CONTENT: [Urdu Content Here]\n\n"
     combined_prompt += "Title: " + english_title + "\n"
@@ -285,6 +315,11 @@ def process_content_with_ai(english_title, original_content):
         except Exception as e:
             print("AI response parse error: " + str(e))
             urdu_content = response
+
+    # Arabic characters ko Urdu mein convert karein
+    urdu_title = fix_arabic_to_urdu(urdu_title)
+    if urdu_content:
+        urdu_content = fix_arabic_to_urdu(urdu_content)
 
     return urdu_title, urdu_content
 
