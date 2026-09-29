@@ -44,6 +44,9 @@ FEEDS = {
     "Business": "https://www.express.pk/business/feed/",
     "Science": "https://www.express.pk/science/feed/",
     "Entertainment": "https://www.express.pk/feed/saqafat",
+    "Entertainment": "https://www.suchtv.pk/urdu/entertainment/itemlist.html?format=feed",
+    "Entertainment": "https://dailyshowbiz.net/feed/",
+    "Entertainment": "https://urdu.thepenpk.com/feed/",
     "Health": "https://www.express.pk/feed/health",
     "Jobs": "https://ntslogin.pk/feed/",
 }
