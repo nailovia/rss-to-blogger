@@ -2,6 +2,7 @@ import feedparser
 import os
 import re
 import time
+import hashlib
 import requests
 from bs4 import BeautifulSoup
 from google.oauth2.credentials import Credentials
@@ -73,6 +74,7 @@ LABEL_MAP = {
 POSTED_URLS_FILE = "posted_urls.txt"
 POSTED_TITLES_FILE = "posted_titles.txt"
 POSTED_IMAGES_FILE = "posted_images.txt"
+POSTED_HASHES_FILE = "posted_hashes.txt"
 
 # ==========================================
 # HELPER FUNCTIONS
@@ -97,6 +99,9 @@ def load_posted_titles():
 def load_posted_images():
     return load_set_from_file(POSTED_IMAGES_FILE)
 
+def load_posted_hashes():
+    return load_set_from_file(POSTED_HASHES_FILE)
+
 def save_posted_url(url):
     save_to_file(POSTED_URLS_FILE, url)
 
@@ -106,10 +111,20 @@ def save_posted_title(title):
 def save_posted_image(image_url):
     save_to_file(POSTED_IMAGES_FILE, image_url)
 
+def save_posted_hash(h):
+    save_to_file(POSTED_HASHES_FILE, h)
+
 def normalize_title(title):
     title = re.sub(r'[^\w\s\u0600-\u06FF]', '', title)
     title = re.sub(r'\s+', ' ', title).strip().lower()
     return title
+
+def content_hash(text):
+    """Content ka unique hash banayein (pehle 200 chars se)"""
+    if not text:
+        return ""
+    snippet = re.sub(r'\s+', '', text[:200]).strip().lower()
+    return hashlib.md5(snippet.encode('utf-8')).hexdigest()
 
 # ==========================================
 # TEXT CLEANING FUNCTIONS
@@ -503,7 +518,8 @@ def fetch_and_post_news():
     posted_urls = load_posted_urls()
     posted_titles = load_posted_titles()
     posted_images = load_posted_images()
-    print("URLs: " + str(len(posted_urls)) + " | Titles: " + str(len(posted_titles)) + " | Images: " + str(len(posted_images)))
+    posted_hashes = load_posted_hashes()
+    print("URLs: " + str(len(posted_urls)) + " | Titles: " + str(len(posted_titles)) + " | Images: " + str(len(posted_images)) + " | Hashes: " + str(len(posted_hashes)))
 
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/114.0.0.0 Safari/537.36'}
 
@@ -533,10 +549,12 @@ def fetch_and_post_news():
             news_link = entry.link
             news_title = entry.title
 
+            # Check 1: URL
             if news_link in posted_urls:
                 print("Skip URL: " + news_title[:50])
                 continue
 
+            # Check 2: Title
             normalized_title = normalize_title(news_title)
             if normalized_title in posted_titles:
                 print("Skip Title: " + news_title[:50])
@@ -561,12 +579,19 @@ def fetch_and_post_news():
                 print("No Image: " + news_title[:50])
                 continue
 
+            # Check 3: Image
             img_src = img_tag.get('src', '')
             if img_src and img_src in posted_images:
                 print("Skip Image: " + news_title[:50])
                 continue
 
             clean_text = soup.get_text(separator="\n").strip()
+
+            # Check 4: Content Hash
+            content_hash_value = content_hash(clean_text)
+            if content_hash_value and content_hash_value in posted_hashes:
+                print("Skip Content (duplicate): " + news_title[:50])
+                continue
 
             print("AI Processing: " + news_title[:60])
             urdu_title, rewritten_urdu = process_content_with_ai(news_title, clean_text)
@@ -587,11 +612,13 @@ def fetch_and_post_news():
                 save_posted_title(normalized_title)
                 if img_src:
                     save_posted_image(img_src)
+                save_posted_hash(content_hash_value)
 
                 posted_urls.add(news_link)
                 posted_titles.add(normalized_title)
                 if img_src:
                     posted_images.add(img_src)
+                posted_hashes.add(content_hash_value)
 
                 posts_published += 1
                 print("Post " + str(posts_published) + "/" + str(MAX_POSTS_PER_RUN) + " published with label: " + final_label)
