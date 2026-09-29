@@ -38,6 +38,7 @@ YOUR_BLOG_URL = os.environ.get("BLOG_URL", "https://yourbolt.blogspot.com")
 
 # Feeds
 FEEDS = {
+    "Jobs": "https://ntslogin.pk/feed/",
     "Pakistan": "https://www.express.pk/pakistan/feed/",
     "World": "https://www.express.pk/world/feed/",
     "Sports": "https://www.express.pk/sports/feed/",
@@ -45,7 +46,6 @@ FEEDS = {
     "Science": "https://www.express.pk/science/feed/",
     "Entertainment": "https://www.express.pk/feed/saqafat",
     "Health": "https://www.express.pk/feed/health",
-    "Jobs": "https://ntslogin.pk/feed/",
 }
 
 POSTED_URLS_FILE = "posted_urls.txt"
