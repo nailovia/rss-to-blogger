@@ -51,7 +51,7 @@ FEEDS = {
     "Entertainment": "https://dailyshowbiz.net/feed/",
     "Entertainment": "https://urdu.thepenpk.com/feed/",
     "Health": "https://www.express.pk/feed/health",
-    "Jobs": "https://ntslogin.pk/feed/",
+    "Jobs": "https://www.shaheenleaderacademy.com/feed/",
 }
 
 # Files
