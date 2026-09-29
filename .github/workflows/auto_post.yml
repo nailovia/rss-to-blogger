@@ -2,7 +2,7 @@ name: Auto Blogger Post
 
 on:
   schedule:
-    - cron: '0 */6 * * *'   # Har 6 ghante
+    - cron: '0 */3 * * *'
   workflow_dispatch:
 
 jobs:
@@ -28,6 +28,8 @@ jobs:
     - name: Run Auto Blogger Script
       env:
         GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
+        GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         CLIENT_ID: ${{ secrets.CLIENT_ID }}
         CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
         REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
