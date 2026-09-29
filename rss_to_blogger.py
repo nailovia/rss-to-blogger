@@ -43,6 +43,9 @@ FEEDS = {
     "Sports": "https://www.express.pk/sports/feed/",
     "Business": "https://www.express.pk/business/feed/",
     "Science": "https://www.express.pk/science/feed/",
+    "Technology": "https://www.express.pk/feed/technology",
+"Technology": "https://www.techjuice.pk/feed/",
+"Technology": "https://propakistani.pk/category/tech-and-telecom/feed/"
     "Entertainment": "https://www.express.pk/feed/saqafat",
     "Entertainment": "https://www.suchtv.pk/urdu/entertainment/itemlist.html?format=feed",
     "Entertainment": "https://dailyshowbiz.net/feed/",
