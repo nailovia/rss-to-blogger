@@ -111,20 +111,48 @@ def normalize_title(title):
     title = re.sub(r'\s+', ' ', title).strip().lower()
     return title
 
+# ==========================================
+# TEXT CLEANING FUNCTIONS
+# ==========================================
+
+def has_non_urdu_script(text):
+    """Detect karein ke text mein Bengali, Hindi, Devanagari, ya Tamil characters hain."""
+    if not text:
+        return False
+    
+    bad_ranges = [
+        (0x0900, 0x097F),  # Devanagari (Hindi)
+        (0x0980, 0x09FF),  # Bengali
+        (0x0A00, 0x0A7F),  # Gurmukhi
+        (0x0A80, 0x0AFF),  # Gujarati
+        (0x0B00, 0x0B7F),  # Oriya
+        (0x0B80, 0x0BFF),  # Tamil
+        (0x0C00, 0x0C7F),  # Telugu
+        (0x0C80, 0x0CFF),  # Kannada
+        (0x0D00, 0x0D7F),  # Malayalam
+        (0x0D80, 0x0DFF),  # Sinhala
+        (0x0E00, 0x0E7F),  # Thai
+        (0x0E80, 0x0EFF),  # Lao
+    ]
+    
+    for char in text:
+        code = ord(char)
+        for start, end in bad_ranges:
+            if start <= code <= end:
+                return True
+    return False
+
 def fix_arabic_to_urdu(text):
-    """
-    Arabic characters ko Urdu characters mein convert karein.
-    AI kabhi kabhi Arabic script use kar jata hai.
-    """
+    """Arabic characters ko Urdu mein convert karein"""
     if not text:
         return text
     
     replacements = {
-        '\u064A': '\u06CC',  # ي → ی (Arabic yeh → Urdu yeh)
+        '\u064A': '\u06CC',  # ي → ی
         '\u0649': '\u06CC',  # ى → ی
         '\u0626': '\u06CC',  # ئ → ی
-        '\u0643': '\u06A9',  # ك → ک (Arabic kaf → Urdu kaf)
-        '\u0647': '\u06C1',  # ه → ہ (Arabic heh → Urdu heh)
+        '\u0643': '\u06A9',  # ك → ک
+        '\u0647': '\u06C1',  # ه → ہ
         '\u06C0': '\u06C1',  # ۀ → ہ
         '\u0623': '\u0627',  # أ → ا
         '\u0625': '\u0627',  # إ → ا
@@ -136,10 +164,51 @@ def fix_arabic_to_urdu(text):
     for arabic, urdu in replacements.items():
         text = text.replace(arabic, urdu)
     
-    # "آ" (alif + maddah) ko "آ" (alif madda) banayein
     text = text.replace('\u0627\u0653', '\u0622')
     
     return text
+
+def remove_bengali_hindi_chars(text):
+    """Bengali/Hindi/Devanagari characters ko remove karein."""
+    if not text:
+        return text
+    
+    bad_ranges = [
+        (0x0900, 0x097F),  # Devanagari
+        (0x0980, 0x09FF),  # Bengali
+        (0x0A00, 0x0A7F),  # Gurmukhi
+        (0x0A80, 0x0AFF),  # Gujarati
+        (0x0B00, 0x0B7F),  # Oriya
+        (0x0B80, 0x0BFF),  # Tamil
+        (0x0C00, 0x0C7F),  # Telugu
+        (0x0C80, 0x0CFF),  # Kannada
+        (0x0D00, 0x0D7F),  # Malayalam
+        (0x0D80, 0x0DFF),  # Sinhala
+        (0x0E00, 0x0E7F),  # Thai
+        (0x0E80, 0x0EFF),  # Lao
+    ]
+    
+    result = []
+    for char in text:
+        code = ord(char)
+        is_bad = False
+        for start, end in bad_ranges:
+            if start <= code <= end:
+                is_bad = True
+                break
+        if not is_bad:
+            result.append(char)
+    
+    return ''.join(result)
+
+def clean_urdu_text(text):
+    """Poora cleaning process"""
+    if not text:
+        return text
+    text = fix_arabic_to_urdu(text)
+    text = remove_bengali_hindi_chars(text)
+    text = re.sub(r'\s+', ' ', text)
+    return text.strip()
 
 # ==========================================
 # GEMINI FUNCTION
@@ -193,7 +262,7 @@ def get_groq_response(prompt):
         data = {
             "model": GROQ_MODEL,
             "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.7,
+            "temperature": 0.5,
             "max_tokens": 2000
         }
         response = requests.post(url, headers=headers, json=data, timeout=30)
@@ -232,7 +301,7 @@ def get_openrouter_response(prompt):
         data = {
             "model": OPENROUTER_MODEL,
             "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.7,
+            "temperature": 0.5,
             "max_tokens": 2000
         }
         response = requests.post(url, headers=headers, json=data, timeout=30)
@@ -275,52 +344,127 @@ def get_ai_response(prompt):
     return None
 
 # ==========================================
-# AI PROCESSING FUNCTION (Title + Content)
+# PROMPT BUILDER (Kisi bhi zubaan se Urdu)
 # ==========================================
 
-def process_content_with_ai(english_title, original_content):
-    combined_prompt = "You are a professional Pakistani Urdu news editor for a Pakistani news website.\n"
-    combined_prompt += "Your task is to:\n"
-    combined_prompt += "1. Translate the given English title into Pakistani Urdu.\n"
-    combined_prompt += "2. Rewrite the given news article entirely in Pakistani Urdu.\n\n"
-    combined_prompt += "CRITICAL RULES (MUST FOLLOW):\n"
-    combined_prompt += "1. Output MUST be 100% in Pakistani Urdu script.\n"
-    combined_prompt += "2. USE ONLY PAKISTANI URDU ALPHABET: ا آ ب پ ت ٹ ث ج چ ح خ د ڈ ذ ر ڑ ز ژ س ش ص ض ط ظ ع غ ف ق ک گ ل م ن ں و ہ ھ ء ی ے\n"
-    combined_prompt += "3. DO NOT use Arabic script characters like: ي ك ه ة ؤ ئ أ إ ٱ\n"
-    combined_prompt += "4. DO NOT use Bengali or Hindi characters.\n"
-    combined_prompt += "5. Write 'آ' (alif madda), NOT 'آ' (alif + maddah).\n"
-    combined_prompt += "6. Write 'ی' (Urdu yeh), NOT 'ي' (Arabic yeh).\n"
-    combined_prompt += "7. Write 'ک' (Urdu kaf), NOT 'ك' (Arabic kaf).\n"
-    combined_prompt += "8. Write 'ہ' (Urdu heh), NOT 'ه' (Arabic heh).\n"
-    combined_prompt += "9. Do not change the core real-time facts or numbers.\n"
-    combined_prompt += "10. Use EXACTLY the following format:\n"
-    combined_prompt += "TITLE: [Urdu Title Here]\n"
-    combined_prompt += "CONTENT: [Urdu Content Here]\n\n"
-    combined_prompt += "Title: " + english_title + "\n"
-    combined_prompt += "Article:\n" + original_content
+def build_prompt(source_title, original_content, strict_mode=False):
+    """
+    Prompt banayein. Source chahe kisi bhi zubaan mein ho,
+    output sirf Pakistani Urdu mein aayega.
+    """
+    prompt = "You are a professional Pakistani Urdu news editor for a Pakistani news website.\n\n"
     
-    response = get_ai_response(combined_prompt)
+    prompt += "YOUR TASK:\n"
+    prompt += "1. Read the given title and article (they may be in ANY language: English, Hindi, Bengali, Arabic, Persian, etc.).\n"
+    prompt += "2. Translate and rewrite BOTH the title and the article ENTIRELY in Pakistani Urdu.\n"
+    prompt += "3. Do not keep ANY word from the source language. Everything must be Urdu.\n\n"
     
-    urdu_title = english_title
+    if strict_mode:
+        prompt += "!!!!! EXTREME WARNING !!!!!\n"
+        prompt += "Your previous response contained WRONG characters (Bengali/Hindi/Arabic/English).\n"
+        prompt += "You MUST write ONLY in Pakistani Urdu this time.\n"
+        prompt += "Any character from another script will result in TOTAL FAILURE.\n\n"
+    
+    prompt += "CRITICAL RULES (MUST FOLLOW):\n"
+    prompt += "1. Output MUST be 100% in Pakistani Urdu script. ZERO exceptions.\n"
+    prompt += "2. USE ONLY THESE URDU LETTERS: ا آ ب پ ت ٹ ث ج چ ح خ د ڈ ذ ر ڑ ز ژ س ش ص ض ط ظ ع غ ف ق ک گ ل م ن ں و ہ ھ ء ی ے\n"
+    prompt += "3. STRICTLY FORBIDDEN:\n"
+    prompt += "   - English/Latin letters: A-Z, a-z (translate ALL English words to Urdu)\n"
+    prompt += "   - Arabic characters: ي ك ه ة ؤ ئ أ إ ٱ (use ی ک ہ instead)\n"
+    prompt += "   - Bengali characters: অ আ ই ঈ ক খ গ ঘ ঙ চ ছ জ ঝ ঞ ট ঠ ড ঢ ণ ত থ দ ধ ন প ফ ব ভ ম য র ল শ ষ স হ\n"
+    prompt += "   - Hindi/Devanagari: अ आ इ ई क ख ग घ च छ ज झ ट ठ ड ढ त थ द ध न प फ ब भ म य र ल व श ष स ह\n"
+    prompt += "   - Any other script (Tamil, Telugu, Kannada, Gujarati, Gurmukhi, etc.)\n"
+    prompt += "4. Numbers: 0-9 digits theek hain, lekin English words like 'one', 'two' ko Urdu mein likhein.\n"
+    prompt += "5. Write 'آ' (alif madda), NOT 'آ' (alif + maddah).\n"
+    prompt += "6. Write 'ی' (Urdu yeh), NOT 'ي' (Arabic yeh).\n"
+    prompt += "7. Write 'ک' (Urdu kaf), NOT 'ك' (Arabic kaf).\n"
+    prompt += "8. Write 'ہ' (Urdu heh), NOT 'ه' (Arabic heh).\n"
+    prompt += "9. Do not change the core facts, numbers, or names.\n"
+    prompt += "10. Proper nouns (like country names) can be transliterated to Urdu (e.g., Pakistan → پاکستان).\n\n"
+    
+    prompt += "USE EXACTLY THIS FORMAT:\n"
+    prompt += "TITLE: [Urdu Title Here]\n"
+    prompt += "CONTENT: [Urdu Content Here]\n\n"
+    
+    prompt += "SOURCE TITLE:\n" + source_title + "\n\n"
+    prompt += "SOURCE ARTICLE:\n" + original_content
+    
+    return prompt
+
+# ==========================================
+# AI PROCESSING FUNCTION
+# ==========================================
+
+def parse_ai_response(response):
+    """AI response se title aur content nikalein"""
+    urdu_title = None
     urdu_content = None
     
-    if response:
-        try:
-            if "TITLE:" in response and "CONTENT:" in response:
-                parts = response.split("CONTENT:")
-                urdu_title = parts[0].replace("TITLE:", "").strip()
-                urdu_content = parts[1].strip()
-            else:
-                urdu_content = response
-        except Exception as e:
-            print("AI response parse error: " + str(e))
+    if not response:
+        return None, None
+    
+    try:
+        if "TITLE:" in response and "CONTENT:" in response:
+            parts = response.split("CONTENT:")
+            urdu_title = parts[0].replace("TITLE:", "").strip()
+            urdu_content = parts[1].strip()
+        else:
             urdu_content = response
+    except Exception as e:
+        print("Parse error: " + str(e))
+        urdu_content = response
+    
+    return urdu_title, urdu_content
 
-    # Arabic characters ko Urdu mein convert karein
-    urdu_title = fix_arabic_to_urdu(urdu_title)
-    if urdu_content:
-        urdu_content = fix_arabic_to_urdu(urdu_content)
-
+def process_content_with_ai(source_title, original_content):
+    """
+    AI se Urdu title aur content banwayein.
+    Agar ghalat characters milein to dobara try karein (max 3 dafa).
+    """
+    urdu_title = source_title
+    urdu_content = None
+    last_response = None
+    
+    for attempt in range(3):
+        print("AI Attempt " + str(attempt + 1) + "/3")
+        
+        strict = (attempt > 0)
+        prompt = build_prompt(source_title, original_content, strict_mode=strict)
+        
+        response = get_ai_response(prompt)
+        if not response:
+            print("AI ne jawab nahi diya. Retry...")
+            time.sleep(2)
+            continue
+        
+        last_response = response
+        
+        temp_title, temp_content = parse_ai_response(response)
+        
+        temp_title = clean_urdu_text(temp_title) if temp_title else None
+        temp_content = clean_urdu_text(temp_content) if temp_content else None
+        
+        title_has_bad = has_non_urdu_script(temp_title) if temp_title else True
+        content_has_bad = has_non_urdu_script(temp_content) if temp_content else True
+        
+        if not title_has_bad and not content_has_bad and temp_content:
+            urdu_title = temp_title
+            urdu_content = temp_content
+            print("Urdu content valid (no bad characters).")
+            break
+        else:
+            print("Bad characters detected! Retrying...")
+            time.sleep(2)
+    
+    if not urdu_content and last_response:
+        print("Teen attempts fail. Aakhri response clean kar rahe hain.")
+        urdu_title, urdu_content = parse_ai_response(last_response)
+        urdu_title = clean_urdu_text(urdu_title) if urdu_title else source_title
+        urdu_content = clean_urdu_text(urdu_content) if urdu_content else None
+    
+    if not urdu_title:
+        urdu_title = source_title
+    
     return urdu_title, urdu_content
 
 # ==========================================
@@ -434,7 +578,6 @@ def fetch_and_post_news():
             image_html = str(img_tag)
             final_html_content = image_html + "<br><br><p>" + rewritten_urdu + "</p><br><br><p><em>News Source: Express News</em></p>"
 
-            # Common label apply karein
             final_label = LABEL_MAP.get(category_label, category_label)
 
             post_url = post_to_blogger(urdu_title, final_html_content, [final_label])
