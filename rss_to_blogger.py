@@ -8,7 +8,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 
 # ==========================================
-# CONFIGURATIONS
+# CONFIGURATIONS (GitHub Secrets se aayenge)
 # ==========================================
 
 # Gemini
@@ -38,7 +38,6 @@ YOUR_BLOG_URL = os.environ.get("BLOG_URL", "https://yourbolt.blogspot.com")
 
 # Feeds
 FEEDS = {
-    "Jobs": "https://ntslogin.pk/feed/",
     "Pakistan": "https://www.express.pk/pakistan/feed/",
     "World": "https://www.express.pk/world/feed/",
     "Sports": "https://www.express.pk/sports/feed/",
@@ -46,8 +45,10 @@ FEEDS = {
     "Science": "https://www.express.pk/science/feed/",
     "Entertainment": "https://www.express.pk/feed/saqafat",
     "Health": "https://www.express.pk/feed/health",
+    "Jobs": "https://ntslogin.pk/feed/",
 }
 
+# Files
 POSTED_URLS_FILE = "posted_urls.txt"
 POSTED_TITLES_FILE = "posted_titles.txt"
 POSTED_IMAGES_FILE = "posted_images.txt"
@@ -95,7 +96,7 @@ def normalize_title(title):
 
 def get_gemini_response(prompt):
     for model in GEMINI_MODELS:
-        print("🔄 Gemini trying: " + model)
+        print("Gemini trying: " + model)
         for key in GEMINI_API_KEYS:
             key = key.strip()
             if not key:
@@ -109,17 +110,17 @@ def get_gemini_response(prompt):
                 if response.status_code == 200:
                     result = response.json()
                     if 'candidates' in result and result['candidates']:
-                        print("✅ Gemini success: " + model)
+                        print("Gemini success: " + model)
                         return result['candidates'][0]['content']['parts'][0]['text'].strip()
                 elif response.status_code == 429:
-                    print("⚠️ Gemini quota khatam: " + model)
+                    print("Gemini quota khatam: " + model)
                 else:
-                    print("⚠️ Gemini " + model + " failed: " + str(response.status_code))
+                    print("Gemini " + model + " failed: " + str(response.status_code))
                 time.sleep(1)
             except Exception as e:
-                print("⚠️ Gemini network error: " + str(e))
+                print("Gemini network error: " + str(e))
                 time.sleep(1)
-    print("❌ Gemini saare fail.")
+    print("Gemini saare fail.")
     return None
 
 # ==========================================
@@ -128,10 +129,10 @@ def get_gemini_response(prompt):
 
 def get_groq_response(prompt):
     if not GROQ_API_KEY:
-        print("⚠️ Groq key nahi hai. Skip.")
+        print("Groq key nahi hai. Skip.")
         return None
     
-    print("🔄 Groq trying: " + GROQ_MODEL)
+    print("Groq trying: " + GROQ_MODEL)
     try:
         url = "https://api.groq.com/openai/v1/chat/completions"
         headers = {
@@ -149,14 +150,14 @@ def get_groq_response(prompt):
         if response.status_code == 200:
             result = response.json()
             content = result['choices'][0]['message']['content'].strip()
-            print("✅ Groq success: " + GROQ_MODEL)
+            print("Groq success: " + GROQ_MODEL)
             return content
         elif response.status_code == 429:
-            print("⚠️ Groq quota khatam.")
+            print("Groq quota khatam.")
         else:
-            print("⚠️ Groq failed: " + str(response.status_code))
+            print("Groq failed: " + str(response.status_code))
     except Exception as e:
-        print("⚠️ Groq network error: " + str(e))
+        print("Groq network error: " + str(e))
     return None
 
 # ==========================================
@@ -165,10 +166,10 @@ def get_groq_response(prompt):
 
 def get_openrouter_response(prompt):
     if not OPENROUTER_API_KEY:
-        print("⚠️ OpenRouter key nahi hai. Skip.")
+        print("OpenRouter key nahi hai. Skip.")
         return None
     
-    print("🔄 OpenRouter trying: " + OPENROUTER_MODEL)
+    print("OpenRouter trying: " + OPENROUTER_MODEL)
     try:
         url = "https://openrouter.ai/api/v1/chat/completions"
         headers = {
@@ -188,14 +189,14 @@ def get_openrouter_response(prompt):
         if response.status_code == 200:
             result = response.json()
             content = result['choices'][0]['message']['content'].strip()
-            print("✅ OpenRouter success: " + OPENROUTER_MODEL)
+            print("OpenRouter success: " + OPENROUTER_MODEL)
             return content
         elif response.status_code == 429:
-            print("⚠️ OpenRouter quota khatam.")
+            print("OpenRouter quota khatam.")
         else:
-            print("⚠️ OpenRouter failed: " + str(response.status_code))
+            print("OpenRouter failed: " + str(response.status_code))
     except Exception as e:
-        print("⚠️ OpenRouter network error: " + str(e))
+        print("OpenRouter network error: " + str(e))
     return None
 
 # ==========================================
@@ -204,29 +205,62 @@ def get_openrouter_response(prompt):
 
 def get_ai_response(prompt):
     print("=" * 50)
-    print("🔄 Step 1: Gemini")
+    print("Step 1: Gemini")
     response = get_gemini_response(prompt)
     if response:
         return response
     
-    print("🔄 Step 2: Groq")
+    print("Step 2: Groq")
     response = get_groq_response(prompt)
     if response:
         return response
     
-    print("🔄 Step 3: OpenRouter")
+    print("Step 3: OpenRouter")
     response = get_openrouter_response(prompt)
     if response:
         return response
     
-    print("❌ Saare providers fail ho gaye.")
+    print("Saare providers fail ho gaye.")
     return None
 
-def process_content_with_ai(urdu_title, original_content):
-    slug = ""
-    rewrite_prompt = "Rewrite this news article in Urdu. Keep it to the point, engaging, and create suspense. Do not change the core real-time facts. Only provide the rewritten Urdu text without any markdown or extra text. Here is the news:\n\n" + original_content
-    urdu_rewritten_content = get_ai_response(rewrite_prompt)
-    return slug, urdu_rewritten_content
+# ==========================================
+# AI PROCESSING FUNCTION (Title + Content)
+# ==========================================
+
+def process_content_with_ai(english_title, original_content):
+    combined_prompt = "You are a professional Urdu news editor.\n"
+    combined_prompt += "Your task is to:\n"
+    combined_prompt += "1. Translate the given English title into pure Urdu.\n"
+    combined_prompt += "2. Rewrite the given news article entirely in pure Urdu.\n\n"
+    combined_prompt += "CRITICAL RULES (MUST FOLLOW):\n"
+    combined_prompt += "1. Output MUST be 100% in Urdu script.\n"
+    combined_prompt += "2. STRICTLY USE ONLY URDU ALPHABET.\n"
+    combined_prompt += "3. DO NOT use any Bengali, Hindi, Arabic, or English characters in the text.\n"
+    combined_prompt += "4. Do not change the core real-time facts or numbers.\n"
+    combined_prompt += "5. Use EXACTLY the following format:\n"
+    combined_prompt += "TITLE: [Urdu Title Here]\n"
+    combined_prompt += "CONTENT: [Urdu Content Here]\n\n"
+    combined_prompt += "Title: " + english_title + "\n"
+    combined_prompt += "Article:\n" + original_content
+    
+    response = get_ai_response(combined_prompt)
+    
+    urdu_title = english_title
+    urdu_content = None
+    
+    if response:
+        try:
+            if "TITLE:" in response and "CONTENT:" in response:
+                parts = response.split("CONTENT:")
+                urdu_title = parts[0].replace("TITLE:", "").strip()
+                urdu_content = parts[1].strip()
+            else:
+                urdu_content = response
+        except Exception as e:
+            print("AI response parse error: " + str(e))
+            urdu_content = response
+
+    return urdu_title, urdu_content
 
 # ==========================================
 # BLOGGER FUNCTION
@@ -249,10 +283,10 @@ def post_to_blogger(title, content, labels_list):
         }
         posts = service.posts()
         res = posts.insert(blogId=BLOG_ID, body=body, isDraft=False).execute()
-        print("✅ Blogger Post Published: " + res.get('url'))
+        print("Blogger Post Published: " + res.get('url'))
         return res.get('url')
     except Exception as e:
-        print("❌ Blogger Post Error: " + str(e))
+        print("Blogger Post Error: " + str(e))
         return None
 
 # ==========================================
@@ -260,11 +294,11 @@ def post_to_blogger(title, content, labels_list):
 # ==========================================
 
 def fetch_and_post_news():
-    print("🚀 Auto Blogger Script Started!")
+    print("Auto Blogger Script Started!")
     posted_urls = load_posted_urls()
     posted_titles = load_posted_titles()
     posted_images = load_posted_images()
-    print("📂 URLs: " + str(len(posted_urls)) + " | Titles: " + str(len(posted_titles)) + " | Images: " + str(len(posted_images)))
+    print("URLs: " + str(len(posted_urls)) + " | Titles: " + str(len(posted_titles)) + " | Images: " + str(len(posted_images)))
 
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/114.0.0.0 Safari/537.36'}
 
@@ -273,19 +307,19 @@ def fetch_and_post_news():
 
     for category_label, feed_url in FEEDS.items():
         if posts_published >= MAX_POSTS_PER_RUN:
-            print("⚠️ Max " + str(MAX_POSTS_PER_RUN) + " posts reached. Stopping.")
+            print("Max " + str(MAX_POSTS_PER_RUN) + " posts reached. Stopping.")
             break
 
-        print("\n🔍 Checking: " + category_label)
+        print("\nChecking: " + category_label)
 
         try:
             feed_response = requests.get(feed_url, headers=headers, timeout=15)
             parsed_feed = feedparser.parse(feed_response.content)
         except Exception as e:
-            print("⚠️ Feed error: " + str(e))
+            print("Feed error: " + str(e))
             continue
 
-        print("✅ Found " + str(len(parsed_feed.entries)) + " articles")
+        print("Found " + str(len(parsed_feed.entries)) + " articles")
 
         for entry in parsed_feed.entries:
             if posts_published >= MAX_POSTS_PER_RUN:
@@ -295,12 +329,12 @@ def fetch_and_post_news():
             news_title = entry.title
 
             if news_link in posted_urls:
-                print("⏩ Skip URL: " + news_title[:50])
+                print("Skip URL: " + news_title[:50])
                 continue
 
             normalized_title = normalize_title(news_title)
             if normalized_title in posted_titles:
-                print("⏩ Skip Title: " + news_title[:50])
+                print("Skip Title: " + news_title[:50])
                 continue
 
             raw_content = entry.content[0].value if 'content' in entry else entry.summary
@@ -319,27 +353,27 @@ def fetch_and_post_news():
                     pass
 
             if not img_tag:
-                print("🚫 No Image: " + news_title[:50])
+                print("No Image: " + news_title[:50])
                 continue
 
             img_src = img_tag.get('src', '')
             if img_src and img_src in posted_images:
-                print("⏩ Skip Image: " + news_title[:50])
+                print("Skip Image: " + news_title[:50])
                 continue
 
             clean_text = soup.get_text(separator="\n").strip()
 
-            print("✍️ AI Processing: " + news_title[:60])
-            slug, rewritten_urdu = process_content_with_ai(news_title, clean_text)
+            print("AI Processing: " + news_title[:60])
+            urdu_title, rewritten_urdu = process_content_with_ai(news_title, clean_text)
 
             if not rewritten_urdu:
-                print("❌ AI fail. Skip.")
+                print("AI fail. Skip.")
                 continue
 
             image_html = str(img_tag)
             final_html_content = image_html + "<br><br><p>" + rewritten_urdu + "</p><br><br><p><em>News Source: Express News</em></p>"
 
-            post_url = post_to_blogger(news_title, final_html_content, [category_label])
+            post_url = post_to_blogger(urdu_title, final_html_content, [category_label])
 
             if post_url:
                 save_posted_url(news_link)
@@ -353,9 +387,9 @@ def fetch_and_post_news():
                     posted_images.add(img_src)
 
                 posts_published += 1
-                print("✅ Post " + str(posts_published) + "/" + str(MAX_POSTS_PER_RUN) + " published.")
+                print("Post " + str(posts_published) + "/" + str(MAX_POSTS_PER_RUN) + " published.")
                 print("=" * 50)
 
 if __name__ == "__main__":
     fetch_and_post_news()
-    print("🏁 Script Finished!")
+    print("Script Finished!")
