@@ -269,7 +269,7 @@ def fetch_and_post_news():
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/114.0.0.0 Safari/537.36'}
 
     posts_published = 0
-    MAX_POSTS_PER_RUN = 5
+    MAX_POSTS_PER_RUN = len(FEEDS)
 
     for category_label, feed_url in FEEDS.items():
         if posts_published >= MAX_POSTS_PER_RUN:
