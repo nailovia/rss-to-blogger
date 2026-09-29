@@ -36,22 +36,42 @@ REFRESH_TOKEN = os.environ.get("REFRESH_TOKEN", "")
 BLOG_ID = os.environ.get("BLOG_ID", "")
 YOUR_BLOG_URL = os.environ.get("BLOG_URL", "https://yourbolt.blogspot.com")
 
-# Feeds
+# ==========================================
+# FEEDS (Alag naam, common label ke liye)
+# ==========================================
 FEEDS = {
+    # News
     "Pakistan": "https://www.express.pk/pakistan/feed/",
     "World": "https://www.express.pk/world/feed/",
     "Sports": "https://www.express.pk/sports/feed/",
     "Business": "https://www.express.pk/business/feed/",
     "Science": "https://www.express.pk/science/feed/",
-    "Technology": "https://www.express.pk/feed/technology",
-"Technology": "https://www.techjuice.pk/feed/",
-"Technology": "https://propakistani.pk/category/tech-and-telecom/feed/"
-    "Entertainment": "https://www.express.pk/feed/saqafat",
-    "Entertainment": "https://www.suchtv.pk/urdu/entertainment/itemlist.html?format=feed",
-    "Entertainment": "https://dailyshowbiz.net/feed/",
-    "Entertainment": "https://urdu.thepenpk.com/feed/",
     "Health": "https://www.express.pk/feed/health",
     "Jobs": "https://www.shaheenleaderacademy.com/feed/",
+
+    # Technology (3 feeds - sab ka label "Technology")
+    "Tech-Express": "https://www.express.pk/feed/technology",
+    "Tech-Juice": "https://www.techjuice.pk/feed/",
+    "Tech-ProPakistani": "https://propakistani.pk/category/tech-and-telecom/feed/",
+
+    # Entertainment (4 feeds - sab ka label "Entertainment")
+    "Ent-Express": "https://www.express.pk/feed/saqafat",
+    "Ent-SuchTV": "https://www.suchtv.pk/urdu/entertainment/itemlist.html?format=feed",
+    "Ent-DailyShowbiz": "https://dailyshowbiz.net/feed/",
+    "Ent-ThePen": "https://urdu.thepenpk.com/feed/",
+}
+
+# ==========================================
+# LABEL MAP (Alag feeds ko common label dena)
+# ==========================================
+LABEL_MAP = {
+    "Tech-Express": "Technology",
+    "Tech-Juice": "Technology",
+    "Tech-ProPakistani": "Technology",
+    "Ent-Express": "Entertainment",
+    "Ent-SuchTV": "Entertainment",
+    "Ent-DailyShowbiz": "Entertainment",
+    "Ent-ThePen": "Entertainment",
 }
 
 # Files
@@ -379,7 +399,10 @@ def fetch_and_post_news():
             image_html = str(img_tag)
             final_html_content = image_html + "<br><br><p>" + rewritten_urdu + "</p><br><br><p><em>News Source: Express News</em></p>"
 
-            post_url = post_to_blogger(urdu_title, final_html_content, [category_label])
+            # Common label apply karein
+            final_label = LABEL_MAP.get(category_label, category_label)
+
+            post_url = post_to_blogger(urdu_title, final_html_content, [final_label])
 
             if post_url:
                 save_posted_url(news_link)
@@ -393,7 +416,7 @@ def fetch_and_post_news():
                     posted_images.add(img_src)
 
                 posts_published += 1
-                print("Post " + str(posts_published) + "/" + str(MAX_POSTS_PER_RUN) + " published.")
+                print("Post " + str(posts_published) + "/" + str(MAX_POSTS_PER_RUN) + " published with label: " + final_label)
                 print("=" * 50)
 
 if __name__ == "__main__":
