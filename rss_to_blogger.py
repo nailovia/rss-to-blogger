@@ -246,11 +246,17 @@ def fetch_and_post_news():
             
             post_url = post_to_blogger(news_title, final_html_content, [category_label])
             
-            if post_url:
+                       if post_url:
                 save_posted_url(news_link)
                 save_posted_title(normalized_title)
                 if img_src:
                     save_posted_image(img_src)
+                
+                # ✅ YEH 4 LINES ADD KAREIN (duplicate rokne ke liye)
+                posted_urls.add(news_link)
+                posted_titles.add(normalized_title)
+                if img_src:
+                    posted_images.add(img_src)
                 
                 posts_published += 1
                 print(f"✅ Post {posts_published}/{MAX_POSTS_PER_RUN} published.")
