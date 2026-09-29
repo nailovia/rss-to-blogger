@@ -12,8 +12,8 @@ from googleapiclient.discovery import build
 # CONFIGURATIONS (GitHub Secrets se aayenge)
 # ==========================================
 
-# Gemini API Keys (comma se alag)
-GEMINI_API_KEYS = os.environ.get("GEMINI_API_KEYS", "").split(",")
+raw_keys = os.environ.get("GEMINI_API_KEYS", "")
+GEMINI_API_KEYS = [k.strip() for k in raw_keys.replace("\n", ",").split(",") if k.strip()]
 
 # Gemini Models
 GEMINI_MODELS = [
