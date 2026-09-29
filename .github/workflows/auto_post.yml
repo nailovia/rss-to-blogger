@@ -2,14 +2,15 @@ name: Auto Blogger Post
 
 on:
   schedule:
-    - cron: '0 * * * *' # Har ghante automatically chalega
-  workflow_dispatch: # Manual test run ka button dega
+    - cron: '0 */6 * * *'   # Har 6 ghante
+  workflow_dispatch:
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     permissions:
-      contents: write    # ← Ye nayi line add ki (push karne ke liye zaroori)
+      contents: write
+    
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
@@ -19,27 +20,25 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Install Required Libraries
+    - name: Install Libraries
       run: |
         python -m pip install --upgrade pip
-        pip install feedparser beautifulsoup4 google-generativeai google-api-python-client google-auth-httplib2 google-auth-oauthlib
+        pip install feedparser beautifulsoup4 google-api-python-client google-auth-httplib2 google-auth-oauthlib requests
 
     - name: Run Auto Blogger Script
-      run: python rss_to_blogger.py
-          - name: Run Auto Blogger Script
       env:
         GEMINI_API_KEYS: ${{ secrets.GEMINI_API_KEYS }}
-        PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
-        PINTEREST_BOARD_ID: ${{ secrets.PINTEREST_BOARD_ID }}
-        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        CLIENT_ID: ${{ secrets.CLIENT_ID }}
+        CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+        REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
+        BLOG_ID: ${{ secrets.BLOG_ID }}
+        BLOG_URL: ${{ secrets.BLOG_URL }}
       run: python rss_to_blogger.py
 
-    # ⬇️⬇️⬇️ YEH NAYA STEP ADD HUA HAI ⬇️⬇️⬇️
     - name: Commit posted files
       run: |
         git config --global user.name "github-actions"
         git config --global user.email "actions@github.com"
         git add posted_urls.txt posted_titles.txt posted_images.txt
-        git commit -m "Update posted URLs, Titles, Images" || exit 0
+        git commit -m "Update posted data" || exit 0
         git push
