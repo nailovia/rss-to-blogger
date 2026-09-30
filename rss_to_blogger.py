@@ -138,13 +138,35 @@ def has_non_urdu_script(text):
     return False
 
 def fix_arabic_to_urdu(text):
+    """
+    Arabic characters ko Urdu mein convert karein.
+    ئ (hamza on yeh) aur ۓ (yeh with hamza above) ko chhorne ke baghair.
+    """
     if not text:
         return text
     replacements = {
-        '\u064A': '\u06CC', '\u0649': '\u06CC', '\u0626': '\u06CC',
-        '\u0643': '\u06A9', '\u0647': '\u06C1', '\u06C0': '\u06C1',
-        '\u0623': '\u0627', '\u0625': '\u0627', '\u0671': '\u0627',
-        '\u0624': '\u0648', '\u0629': '\u06C1',
+        # Arabic yeh → Urdu yeh
+        '\u064A': '\u06CC',  # ي → ی
+        '\u0649': '\u06CC',  # ى → ی
+        
+        # Urdu yeh with hamza above (AI ki ghalti se aata hai) → Sahi hamza
+        '\u06D3': '\u0626',  # ۓ → ئ
+        
+        # Arabic kaf → Urdu kaf
+        '\u0643': '\u06A9',  # ك → ک
+        
+        # Arabic heh → Urdu heh
+        '\u0647': '\u06C1',  # ه → ہ
+        '\u06C0': '\u06C1',  # ۀ → ہ
+        
+        # Arabic alif variants → plain alif
+        '\u0623': '\u0627',  # أ → ا
+        '\u0625': '\u0627',  # إ → ا
+        '\u0671': '\u0627',  # ٱ → ا
+        
+        # Other Arabic
+        '\u0624': '\u0648',  # ؤ → و
+        '\u0629': '\u06C1',  # ة → ہ
     }
     for arabic, urdu in replacements.items():
         text = text.replace(arabic, urdu)
@@ -319,10 +341,10 @@ def build_prompt(source_title, original_content, strict_mode=False):
         prompt += "Any character from another script will result in TOTAL FAILURE.\n\n"
     prompt += "CRITICAL RULES (MUST FOLLOW):\n"
     prompt += "1. Output MUST be 100% in Pakistani Urdu script. ZERO exceptions.\n"
-    prompt += "2. USE ONLY THESE URDU LETTERS: ا آ ب پ ت ٹ ث ج چ ح خ د ڈ ذ ر ڑ ز ژ س ش ص ض ط ظ ع غ ف ق ک گ ل م ن ں و ہ ھ ء ی ے\n"
+    prompt += "2. USE ONLY THESE URDU LETTERS: ا آ ب پ ت ٹ ث ج چ ح خ د ڈ ذ ر ڑ ز ژ س ش ص ض ط ظ ع غ ف ق ک گ ل م ن ں و ہ ھ ء ی ے ئ\n"
     prompt += "3. STRICTLY FORBIDDEN:\n"
     prompt += "   - English/Latin letters: A-Z, a-z\n"
-    prompt += "   - Arabic characters: ي ك ه ة ؤ ئ أ إ ٱ\n"
+    prompt += "   - Arabic characters: ي ك ه ة ؤ أ إ ٱ\n"
     prompt += "   - Bengali characters: অ আ ই ঈ ক খ গ ঘ ঙ চ ছ জ ঝ ঞ ট ঠ ড ঢ ণ ত থ দ ধ ন প ফ ব ভ ম য র ল শ ষ স হ\n"
     prompt += "   - Hindi/Devanagari: अ आ इ ई क ख ग घ च छ ज झ ट ठ ड ढ त थ द ध न प फ ब भ म य र ल व श ष स ह\n"
     prompt += "   - Any other script\n"
@@ -331,8 +353,9 @@ def build_prompt(source_title, original_content, strict_mode=False):
     prompt += "6. Write 'ی' (Urdu yeh), NOT 'ي' (Arabic).\n"
     prompt += "7. Write 'ک' (Urdu kaf), NOT 'ك' (Arabic).\n"
     prompt += "8. Write 'ہ' (Urdu heh), NOT 'ه' (Arabic).\n"
-    prompt += "9. Do not change the core facts, numbers, or names.\n"
-    prompt += "10. Proper nouns can be transliterated to Urdu.\n\n"
+    prompt += "9. Wherever 'hamza' is needed, use 'ئ' (e.g., شیئر، گئی، کوئی). Do NOT replace it with 'ی'.\n"
+    prompt += "10. Do not change the core facts, numbers, or names.\n"
+    prompt += "11. Proper nouns can be transliterated to Urdu.\n\n"
     prompt += "USE EXACTLY THIS FORMAT:\n"
     prompt += "TITLE: [Urdu Title Here]\n"
     prompt += "CONTENT: [Urdu Content Here]\n\n"
