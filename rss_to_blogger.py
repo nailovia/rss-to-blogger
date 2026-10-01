@@ -137,34 +137,26 @@ def has_non_urdu_script(text):
                 return True
     return False
 
+def has_latin_letters(text):
+    """Check karein ke text mein English letters hain ya nahi"""
+    if not text:
+        return False
+    return bool(re.search(r'[A-Za-z]', text))
+
 def fix_arabic_to_urdu(text):
-    """
-    Arabic characters ko Urdu mein convert karein.
-    ئ (hamza on yeh) aur ۓ (yeh with hamza above) ko chhorne ke baghair.
-    """
+    """Arabic characters ko Urdu mein convert karein."""
     if not text:
         return text
     replacements = {
-        # Arabic yeh → Urdu yeh
         '\u064A': '\u06CC',  # ي → ی
         '\u0649': '\u06CC',  # ى → ی
-        
-        # Urdu yeh with hamza above (AI ki ghalti se aata hai) → Sahi hamza
         '\u06D3': '\u0626',  # ۓ → ئ
-        
-        # Arabic kaf → Urdu kaf
         '\u0643': '\u06A9',  # ك → ک
-        
-        # Arabic heh → Urdu heh
         '\u0647': '\u06C1',  # ه → ہ
         '\u06C0': '\u06C1',  # ۀ → ہ
-        
-        # Arabic alif variants → plain alif
         '\u0623': '\u0627',  # أ → ا
         '\u0625': '\u0627',  # إ → ا
         '\u0671': '\u0627',  # ٱ → ا
-        
-        # Other Arabic
         '\u0624': '\u0648',  # ؤ → و
         '\u0629': '\u06C1',  # ة → ہ
     }
@@ -235,7 +227,7 @@ def get_gemini_response(prompt):
     return None
 
 # ==========================================
-# GROQ FUNCTION
+# GROQ FUNCTION (With System Message)
 # ==========================================
 
 def get_groq_response(prompt):
@@ -248,9 +240,15 @@ def get_groq_response(prompt):
         headers = {"Authorization": "Bearer " + GROQ_API_KEY, "Content-Type": "application/json"}
         data = {
             "model": GROQ_MODEL,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.5,
-            "max_tokens": 2000
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You are a translation machine. You ONLY output the final Urdu result in the exact requested format. You NEVER explain, reason, think out loud, or write your thoughts. You NEVER write in English. You NEVER use placeholders like [Urdu Title Here]. If you cannot translate, output empty content."
+                },
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.3,
+            "max_tokens": 3000
         }
         response = requests.post(url, headers=headers, json=data, timeout=30)
         if response.status_code == 200:
@@ -267,7 +265,7 @@ def get_groq_response(prompt):
     return None
 
 # ==========================================
-# OPENROUTER FUNCTION
+# OPENROUTER FUNCTION (With System Message)
 # ==========================================
 
 def get_openrouter_response(prompt):
@@ -285,9 +283,15 @@ def get_openrouter_response(prompt):
         }
         data = {
             "model": OPENROUTER_MODEL,
-            "messages": [{"role": "user", "content": prompt}],
-            "temperature": 0.5,
-            "max_tokens": 2000
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "You are a translation machine. You ONLY output the final Urdu result in the exact requested format. You NEVER explain, reason, think out loud, or write your thoughts. You NEVER write in English. You NEVER use placeholders like [Urdu Title Here]."
+                },
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.3,
+            "max_tokens": 3000
         }
         response = requests.post(url, headers=headers, json=data, timeout=30)
         if response.status_code == 200:
@@ -325,46 +329,45 @@ def get_ai_response(prompt):
     return None
 
 # ==========================================
-# PROMPT BUILDER
+# PROMPT BUILDER (Improved - No Confusion)
 # ==========================================
 
 def build_prompt(source_title, original_content, strict_mode=False):
-    prompt = "You are a professional Pakistani Urdu news editor for a Pakistani news website.\n\n"
-    prompt += "YOUR TASK:\n"
-    prompt += "1. Read the given title and article (they may be in ANY language: English, Hindi, Bengali, Arabic, Persian, etc.).\n"
-    prompt += "2. Translate and rewrite BOTH the title and the article ENTIRELY in Pakistani Urdu.\n"
-    prompt += "3. Do not keep ANY word from the source language. Everything must be Urdu.\n\n"
+    prompt = "TASK: Translate and rewrite the following news into Pakistani Urdu.\n\n"
+    prompt += "INPUT TITLE:\n"
+    prompt += source_title + "\n\n"
+    prompt += "INPUT ARTICLE:\n"
+    prompt += original_content + "\n\n"
+    prompt += "STRICT RULES:\n"
+    prompt += "- Output ONLY the final result. Do NOT write your thinking, reasoning, or explanation.\n"
+    prompt += "- Do NOT repeat the instructions. Do NOT write 'We need to...' or 'Let me...'.\n"
+    prompt += "- Do NOT use placeholders like [Urdu Title Here] or [Urdu Content Here].\n"
+    prompt += "- Output MUST be 100% Pakistani Urdu using ONLY these letters: ا آ ب پ ت ٹ ث ج چ ح خ د ڈ ذ ر ڑ ز ژ س ش ص ض ط ظ ع غ ف ق ک گ ل م ن ں و ہ ھ ء ی ے ئ\n"
+    prompt += "- STRICTLY FORBIDDEN characters:\n"
+    prompt += "  * English letters (A-Z, a-z)\n"
+    prompt += "  * Arabic: ي ك ه ة ؤ أ إ ٱ\n"
+    prompt += "  * Bengali: অ আ ই ঈ ক খ গ ঘ ঙ চ ছ জ ঝ ঞ ট ঠ ড ঢ ণ ত থ দ ধ ন প ফ ব ভ ম য র ল শ ষ স হ\n"
+    prompt += "  * Hindi: अ आ इ ई क ख ग घ च छ ज झ ट ठ ड ढ त थ द ध न प फ ब भ म य र ल व श ष स ह\n"
+    prompt += "- Numbers 0-9 allowed.\n"
+    prompt += "- Use 'آ' (alif madda) NOT 'آ'. Use 'ی' NOT 'ي'. Use 'ک' NOT 'ك'. Use 'ہ' NOT 'ه'.\n"
+    prompt += "- Wherever hamza is needed, use 'ئ' (e.g., شیئر، گئی، کوئی). NEVER replace ئ with ی.\n"
+    prompt += "- Do NOT change facts, numbers, or names. Proper nouns can be transliterated.\n\n"
+
     if strict_mode:
         prompt += "!!!!! EXTREME WARNING !!!!!\n"
-        prompt += "Your previous response contained WRONG characters (Bengali/Hindi/Arabic/English).\n"
-        prompt += "You MUST write ONLY in Pakistani Urdu this time.\n"
-        prompt += "Any character from another script will result in TOTAL FAILURE.\n\n"
-    prompt += "CRITICAL RULES (MUST FOLLOW):\n"
-    prompt += "1. Output MUST be 100% in Pakistani Urdu script. ZERO exceptions.\n"
-    prompt += "2. USE ONLY THESE URDU LETTERS: ا آ ب پ ت ٹ ث ج چ ح خ د ڈ ذ ر ڑ ز ژ س ش ص ض ط ظ ع غ ف ق ک گ ل م ن ں و ہ ھ ء ی ے ئ\n"
-    prompt += "3. STRICTLY FORBIDDEN:\n"
-    prompt += "   - English/Latin letters: A-Z, a-z\n"
-    prompt += "   - Arabic characters: ي ك ه ة ؤ أ إ ٱ\n"
-    prompt += "   - Bengali characters: অ আ ই ঈ ক খ গ ঘ ঙ চ ছ জ ঝ ঞ ট ঠ ড ঢ ণ ত থ দ ধ ন প ফ ব ভ ম য র ল শ ষ স হ\n"
-    prompt += "   - Hindi/Devanagari: अ आ इ ई क ख ग घ च छ ज झ ट ठ ड ढ त थ द ध न प फ ब भ म य र ल व श ष स ह\n"
-    prompt += "   - Any other script\n"
-    prompt += "4. Numbers: 0-9 digits theek hain.\n"
-    prompt += "5. Write 'آ' (alif madda), NOT 'آ'.\n"
-    prompt += "6. Write 'ی' (Urdu yeh), NOT 'ي' (Arabic).\n"
-    prompt += "7. Write 'ک' (Urdu kaf), NOT 'ك' (Arabic).\n"
-    prompt += "8. Write 'ہ' (Urdu heh), NOT 'ه' (Arabic).\n"
-    prompt += "9. Wherever 'hamza' is needed, use 'ئ' (e.g., شیئر، گئی، کوئی). Do NOT replace it with 'ی'.\n"
-    prompt += "10. Do not change the core facts, numbers, or names.\n"
-    prompt += "11. Proper nouns can be transliterated to Urdu.\n\n"
-    prompt += "USE EXACTLY THIS FORMAT:\n"
-    prompt += "TITLE: [Urdu Title Here]\n"
-    prompt += "CONTENT: [Urdu Content Here]\n\n"
-    prompt += "SOURCE TITLE:\n" + source_title + "\n\n"
-    prompt += "SOURCE ARTICLE:\n" + original_content
+        prompt += "Your previous response was REJECTED because it contained:\n"
+        prompt += "  - English reasoning text\n"
+        prompt += "  - Placeholder brackets like [Urdu Title Here]\n"
+        prompt += "  - Wrong characters from other scripts\n"
+        prompt += "This time, output ONLY the final Urdu result in the exact format below.\n\n"
+
+    prompt += "OUTPUT FORMAT (follow exactly, nothing else):\n"
+    prompt += "TITLE: <urdu title here>\n"
+    prompt += "CONTENT: <urdu content here>\n"
     return prompt
 
 # ==========================================
-# AI PROCESSING FUNCTION
+# AI PROCESSING FUNCTION (With Garbage Detection)
 # ==========================================
 
 def parse_ai_response(response):
@@ -372,16 +375,50 @@ def parse_ai_response(response):
     urdu_content = None
     if not response:
         return None, None
+
+    # Step 1: Garbage detection
+    response_lower = response.lower()
+    garbage_signs = [
+        "we need to",
+        "let's see",
+        "let me",
+        "wait,",
+        "actually",
+        "we must",
+        "[urdu title here]",
+        "[urdu content here]",
+        "task:",
+        "input title:",
+        "input article:",
+        "strict rules:",
+        "output format:",
+        "here is the",
+        "here's the",
+    ]
+    for sign in garbage_signs:
+        if sign in response_lower:
+            print("Garbage detected in AI response: " + sign)
+            return None, None
+
+    # Step 2: Parse TITLE: and CONTENT:
     try:
         if "TITLE:" in response and "CONTENT:" in response:
-            parts = response.split("CONTENT:")
-            urdu_title = parts[0].replace("TITLE:", "").strip()
-            urdu_content = parts[1].strip()
+            parts = response.split("CONTENT:", 1)
+            title_part = parts[0].replace("TITLE:", "").strip()
+            content_part = parts[1].strip()
+
+            # Remove any extra TITLE: prefix if AI duplicated
+            title_part = title_part.replace("TITLE:", "").strip()
+
+            urdu_title = title_part if title_part else None
+            urdu_content = content_part if content_part else None
         else:
-            urdu_content = response
+            print("AI response format invalid (missing TITLE/CONTENT markers)")
+            return None, None
     except Exception as e:
         print("Parse error: " + str(e))
-        urdu_content = response
+        return None, None
+
     return urdu_title, urdu_content
 
 def process_content_with_ai(source_title, original_content):
@@ -399,11 +436,22 @@ def process_content_with_ai(source_title, original_content):
             continue
         last_response = response
         temp_title, temp_content = parse_ai_response(response)
+        
+        # Agar garbage detect hua to skip
+        if not temp_title or not temp_content:
+            print("Garbage response. Retrying...")
+            time.sleep(2)
+            continue
+        
         temp_title = clean_urdu_text(temp_title) if temp_title else None
         temp_content = clean_urdu_text(temp_content) if temp_content else None
+        
         title_has_bad = has_non_urdu_script(temp_title) if temp_title else True
         content_has_bad = has_non_urdu_script(temp_content) if temp_content else True
-        if not title_has_bad and not content_has_bad and temp_content:
+        title_has_latin = has_latin_letters(temp_title) if temp_title else True
+        content_has_latin = has_latin_letters(temp_content) if temp_content else True
+        
+        if not title_has_bad and not content_has_bad and not title_has_latin and not content_has_latin and temp_content:
             urdu_title = temp_title
             urdu_content = temp_content
             print("Urdu content valid.")
@@ -411,13 +459,18 @@ def process_content_with_ai(source_title, original_content):
         else:
             print("Bad characters detected! Retrying...")
             time.sleep(2)
+    
     if not urdu_content and last_response:
         print("Teen attempts fail. Aakhri response clean kar rahe hain.")
         urdu_title, urdu_content = parse_ai_response(last_response)
-        urdu_title = clean_urdu_text(urdu_title) if urdu_title else source_title
-        urdu_content = clean_urdu_text(urdu_content) if urdu_content else None
+        if urdu_title:
+            urdu_title = clean_urdu_text(urdu_title)
+        if urdu_content:
+            urdu_content = clean_urdu_text(urdu_content)
+    
     if not urdu_title:
         urdu_title = source_title
+    
     return urdu_title, urdu_content
 
 # ==========================================
@@ -457,7 +510,6 @@ def fetch_and_post_news():
 
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/114.0.0.0 Safari/537.36'}
 
-    # Har feed se 1 post = 14 posts per run
     MAX_POSTS_PER_RUN = 14
     posts_published = 0
 
@@ -477,12 +529,11 @@ def fetch_and_post_news():
 
         print("Found " + str(len(parsed_feed.entries)) + " articles")
 
-        # Ek feed se sirf 1 post
         posted_from_this_feed = False
 
         for entry in parsed_feed.entries:
             if posted_from_this_feed:
-                break  # Is feed se 1 post ho gaya, agli feed par jayein
+                break
 
             if posts_published >= MAX_POSTS_PER_RUN:
                 break
@@ -558,7 +609,7 @@ def fetch_and_post_news():
                 posted_hashes.add(content_hash_value)
 
                 posts_published += 1
-                posted_from_this_feed = True  # Yeh feed done, agli par jayein
+                posted_from_this_feed = True
 
                 print("Post " + str(posts_published) + "/" + str(MAX_POSTS_PER_RUN) + " published with label: " + final_label + " (from " + category_label + ")")
                 print("=" * 50)
