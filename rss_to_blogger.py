@@ -474,6 +474,49 @@ def process_content_with_ai(source_title, original_content):
     return urdu_title, urdu_content
 
 # ==========================================
+# IMAGE OPTIMIZATION FUNCTION (NEW)
+# ==========================================
+
+def optimize_image_tag(img_tag, is_lcp=True):
+    """
+    Image tag me SEO + Performance attributes add karta hai.
+    is_lcp=True: pehli (badi) image ke liye eager + high priority
+    is_lcp=False: baaki images ke liye lazy load
+    """
+    if img_tag is None:
+        return img_tag
+    try:
+        # LCP image
+        if is_lcp:
+            img_tag['loading'] = 'eager'
+            img_tag['fetchpriority'] = 'high'
+        else:
+            img_tag['loading'] = 'lazy'
+            img_tag['fetchpriority'] = 'auto'
+        
+        # Decoding async (main thread free)
+        img_tag['decoding'] = 'async'
+        
+        # Width/Height for CLS (agar pehle se nahi hain)
+        if not img_tag.get('width'):
+            img_tag['width'] = '800'
+        if not img_tag.get('height'):
+            img_tag['height'] = '450'
+        
+        # Alt text (agar khali hai)
+        if not img_tag.get('alt'):
+            img_tag['alt'] = 'News Image'
+        
+        # Referrer policy (privacy + speed)
+        if not img_tag.get('referrerpolicy'):
+            img_tag['referrerpolicy'] = 'no-referrer'
+        
+    except Exception as e:
+        print("Image optimize error: " + str(e))
+    
+    return img_tag
+
+# ==========================================
 # BLOGGER FUNCTION
 # ==========================================
 
@@ -588,7 +631,21 @@ def fetch_and_post_news():
                 print("AI fail. Skip.")
                 continue
 
+            # === IMAGE OPTIMIZATION START ===
+            # Pehli (LCP) image ko eager + high priority
+            img_tag = optimize_image_tag(img_tag, is_lcp=True)
+            
+            # Content me agar aur images hain to unhe lazy load karo
+            all_content_imgs = soup.find_all('img')
+            for idx, extra_img in enumerate(all_content_imgs):
+                if idx == 0:
+                    # Pehli image hi LCP hai, usko skip karo (already optimized)
+                    continue
+                extra_img = optimize_image_tag(extra_img, is_lcp=False)
+            
             image_html = str(img_tag)
+            # === IMAGE OPTIMIZATION END ===
+
             final_html_content = image_html + "<br><br><p>" + rewritten_urdu + "</p><br><br><p><em>News Source: Express News</em></p>"
 
             final_label = LABEL_MAP.get(category_label, category_label)
